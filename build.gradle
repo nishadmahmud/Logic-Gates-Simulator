@@ -1,0 +1,39 @@
+plugins {
+    id "java-library"
+    id "application"
+}
+
+sourceCompatibility = "17"
+targetCompatibility = "17"
+
+group "fluff.lgs"
+
+mainClassName = "fluff.lgs.Main"
+
+application {
+    mainClass = "$mainClassName"
+}
+
+jar {
+    manifest {
+        attributes(
+                "Main-Class": "$mainClassName"
+        )
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	implementation("org.slick2d:slick2d-core:1.0.2") {
+		exclude group: "net.java.jinput", module: "jinput"
+	}
+	
+	implementation("net.java.dev.jna:jna:5.6.0")
+	implementation("net.java.dev.jna:jna-platform:5.6.0")
+}
