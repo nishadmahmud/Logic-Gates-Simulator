@@ -8,6 +8,13 @@ import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Arrays;
 
 import fluff.lgs.LGS;
 import fluff.lgs.gate.LogicalValue;
@@ -18,6 +25,8 @@ import fluff.lgs.gui.elements.gate.GateWindow;
 import fluff.lgs.gui.Element;
 import fluff.lgs.gate.IGateType;
 import fluff.lgs.gate.connection.Link;
+import fluff.lgs.gate.KMap;
+import fluff.lgs.gate.QuineMcCluskey;
 
 public class EquationScreen extends JFrame {
     private JTextPane equationArea;
@@ -216,12 +225,21 @@ public class EquationScreen extends JFrame {
 
         for (GateWindow output : outputGates) {
             String originalEq = generateEquation(output);
-            String simplifiedEq = simplifyEquation(originalEq);
+            String simplifiedEq = simplifyUsingKMap(originalEq, getVariables(output));
             
             equations.append(output.title).append(" = ");
-            equations.append(originalEq);
-            if (!originalEq.equals(simplifiedEq)) {
-                equations.append("\n  = ").append(simplifiedEq).append(" (simplified)");
+            
+            // Sort variables in simplified equation if it's different from original
+            if (!originalEq.equals(simplifiedEq) && !isXORExpansion(originalEq, simplifiedEq)) {
+                simplifiedEq = sortVariablesAlphabetically(simplifiedEq);
+                if (!originalEq.equals(simplifiedEq)) {  // Check again after sorting
+                    equations.append(originalEq);
+                    equations.append("\n  = ").append(simplifiedEq).append(" (simplified)");
+                } else {
+                    equations.append(originalEq);
+                }
+            } else {
+                equations.append(originalEq);
             }
             equations.append("\n\n");
         }
@@ -229,55 +247,159 @@ public class EquationScreen extends JFrame {
         equationArea.setText(equations.toString());
     }
 
-    private String simplifyEquation(String equation) {
-        String simplified = equation;
-        boolean changed;
+    private String sortVariablesAlphabetically(String equation) {
+        // Don't sort if it's a XOR/XNOR expression
+        if (equation.contains("⊕")) return equation;
         
-        do {
-            changed = false;
-            String previous = simplified;
-            
-            // Identity laws
-            simplified = simplified.replaceAll("A • 1", "A");
-            simplified = simplified.replaceAll("1 • A", "A");
-            simplified = simplified.replaceAll("A \\+ 0", "A");
-            simplified = simplified.replaceAll("0 \\+ A", "A");
-            
-            // Null laws
-            simplified = simplified.replaceAll("A • 0", "0");
-            simplified = simplified.replaceAll("0 • A", "0");
-            simplified = simplified.replaceAll("A \\+ 1", "1");
-            simplified = simplified.replaceAll("1 \\+ A", "1");
-            
-            // Idempotent law
-            simplified = simplified.replaceAll("A • A", "A");
-            simplified = simplified.replaceAll("A \\+ A", "A");
-            
-            // Inverse law
-            simplified = simplified.replaceAll("A • !A", "0");
-            simplified = simplified.replaceAll("!A • A", "0");
-            simplified = simplified.replaceAll("A \\+ !A", "1");
-            simplified = simplified.replaceAll("!A \\+ A", "1");
-            
-            // Double negation
-            simplified = simplified.replaceAll("!!A", "A");
-            
-            // Absorption law
-            simplified = simplified.replaceAll("A • \\(A \\+ B\\)", "A");
-            simplified = simplified.replaceAll("A \\+ \\(A • B\\)", "A");
-            
-            // De Morgan's laws
-            simplified = simplified.replaceAll("!\\(A • B\\)", "!A \\+ !B");
-            simplified = simplified.replaceAll("!\\(A \\+ B\\)", "!A • !B");
-            
-            // Check if any simplification was applied
-            if (!simplified.equals(previous)) {
-                changed = true;
+        // Split into terms (by +)
+        String[] terms = equation.split("\\s*\\+\\s*");
+        List<String> sortedTerms = new ArrayList<>();
+        
+        for (String term : terms) {
+            // Split into variables (by •)
+            String[] vars = term.trim().split("\\s*•\\s*");
+            Arrays.sort(vars);
+            sortedTerms.add(String.join(" • ", vars));
+        }
+        
+        // Sort the terms themselves
+        Collections.sort(sortedTerms);
+        return String.join(" + ", sortedTerms);
+    }
+
+    private boolean isXORExpansion(String original, String simplified) {
+        // Check if original contains XOR/XNOR and simplified is its expansion
+        return (original.contains("⊕") || original.contains("!(") && original.contains("⊕)")) && 
+               (simplified.contains("•") && simplified.contains("+"));
+    }
+
+    private String simplifyUsingKMap(String equation, List<String> variables) {
+        int numVars = variables.size();
+        if (numVars == 0) {
+            return equation;
+        }
+        
+        int numTerms = 1 << numVars;
+        
+        // Create truth table from equation
+        boolean[] truthTable = new boolean[numTerms];
+        for (int i = 0; i < numTerms; i++) {
+            Map<String, Boolean> assignments = new HashMap<>();
+            // Fix variable ordering to match circuit
+            for (int j = 0; j < numVars; j++) {
+                // Reverse bit order to match circuit's input ordering
+                boolean value = ((i >> (numVars - 1 - j)) & 1) == 1;
+                assignments.put(variables.get(j), value);
             }
-            
-        } while (changed); // Keep simplifying until no more changes can be made
+            truthTable[i] = evaluateEquation(equation, assignments);
+        }
         
-        return simplified;
+        // Debug output
+        System.out.println("Truth table for: " + equation);
+        for (int i = 0; i < numTerms; i++) {
+            StringBuilder debug = new StringBuilder();
+            for (int j = 0; j < numVars; j++) {
+                debug.append(((i >> (numVars - 1 - j)) & 1) == 1 ? "1" : "0").append(" ");
+            }
+            debug.append("| ").append(truthTable[i] ? "1" : "0");
+            System.out.println(debug.toString());
+        }
+        
+        return QuineMcCluskey.simplify(truthTable, variables);
+    }
+
+    private List<String> getVariables(GateWindow outputGate) {
+        Set<String> variableSet = new LinkedHashSet<>();  // Use LinkedHashSet to maintain insertion order
+        collectVariables(outputGate, variableSet, new HashSet<>());
+        return new ArrayList<>(variableSet);  // No need to sort, maintain circuit order
+    }
+
+    private void collectVariables(GateWindow gate, Set<String> variables, Set<GateWindow> visited) {
+        if (visited.contains(gate)) {
+            return;  // Avoid cycles
+        }
+        visited.add(gate);
+
+        // Get inputs in order
+        List<GateWindow> inputs = getInputConnections(gate);
+        
+        // Process inputs first (reverse order to maintain correct precedence)
+        for (int i = inputs.size() - 1; i >= 0; i--) {
+            GateWindow input = inputs.get(i);
+            collectVariables(input, variables, visited);
+        }
+
+        // Add this gate's variable if it's an input
+        if (gate.gate instanceof InputGate) {
+            variables.add(gate.title);
+        }
+    }
+
+    private boolean evaluateEquation(String equation, Map<String, Boolean> assignments) {
+        // Remove spaces
+        equation = equation.replaceAll("\\s+", "");
+        
+        // Handle parentheses recursively
+        while (equation.contains("(")) {
+            int start = equation.lastIndexOf("(");
+            int end = equation.indexOf(")", start);
+            String subExpr = equation.substring(start + 1, end);
+            boolean value = evaluateEquation(subExpr, assignments);
+            equation = equation.substring(0, start) + (value ? "1" : "0") + equation.substring(end + 1);
+        }
+        
+        // Evaluate NOT operations
+        while (equation.contains("!")) {
+            int pos = equation.indexOf("!");
+            if (pos + 1 < equation.length()) {
+                char next = equation.charAt(pos + 1);
+                boolean value;
+                if (next >= 'A' && next <= 'Z') {
+                    value = !assignments.getOrDefault(String.valueOf(next), false);
+                } else {
+                    value = !(next == '1');
+                }
+                equation = equation.substring(0, pos) + (value ? "1" : "0") + equation.substring(pos + 2);
+            }
+        }
+        
+        // Replace variables with their values
+        for (Map.Entry<String, Boolean> entry : assignments.entrySet()) {
+            equation = equation.replace(entry.getKey(), entry.getValue() ? "1" : "0");
+        }
+
+        // Evaluate XOR operations (⊕)
+        while (equation.contains("⊕")) {
+            int pos = equation.indexOf("⊕");
+            if (pos > 0 && pos + 1 < equation.length()) {
+                boolean left = equation.charAt(pos - 1) == '1';
+                boolean right = equation.charAt(pos + 1) == '1';
+                equation = equation.substring(0, pos - 1) + ((left != right) ? "1" : "0") + equation.substring(pos + 2);
+            }
+        }
+        
+        // Evaluate AND operations (•)
+        while (equation.contains("•")) {
+            int pos = equation.indexOf("•");
+            if (pos > 0 && pos + 1 < equation.length()) {
+                boolean left = equation.charAt(pos - 1) == '1';
+                boolean right = equation.charAt(pos + 1) == '1';
+                equation = equation.substring(0, pos - 1) + ((left && right) ? "1" : "0") + equation.substring(pos + 2);
+            }
+        }
+        
+        // Evaluate OR operations (+)
+        while (equation.contains("+")) {
+            int pos = equation.indexOf("+");
+            if (pos > 0 && pos + 1 < equation.length()) {
+                boolean left = equation.charAt(pos - 1) == '1';
+                boolean right = equation.charAt(pos + 1) == '1';
+                equation = equation.substring(0, pos - 1) + ((left || right) ? "1" : "0") + equation.substring(pos + 2);
+            }
+        }
+        
+        // Final result should be just "0" or "1"
+        return equation.equals("1");
     }
 
     private void cleanup() {
