@@ -11,7 +11,11 @@ public interface IGateType {
 	
 	String getID();
 	
-	int getInputs();
+	int getMinInputs();
+	
+	int getMaxInputs();
+	
+	int getDefaultInputs();
 	
 	int getOutputs();
 	

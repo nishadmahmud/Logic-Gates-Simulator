@@ -1,5 +1,8 @@
 package fluff.lgs.gui.screens;
 
+import org.newdawn.slick.Color;
+import org.newdawn.slick.Graphics;
+
 import fluff.lgs.LGS;
 import fluff.lgs.gate.connection.Link;
 import fluff.lgs.gui.Element;
@@ -38,6 +41,42 @@ public class GateSettingsScreen extends ScrollMenuScreen {
 		namePanel.elements.add(new Button("Set", namePanel.width - 60, 10, 50, 30, this::setWindowName));
 		scroll.add(namePanel);
 		
+		// Input count section (only for gates that support variable inputs)
+		if (gw.gate != null && gw.gate.type.getMaxInputs() > gw.gate.type.getMinInputs()) {
+			NicePanel inputPanel = new NicePanel(0, 0, scroll.getContentWidth(), 50, false);
+			inputPanel.elements.add(new Label("Inputs", 10, 0, 0, inputPanel.height, Fonts.NORMAL, Align.START, Align.CENTER));
+			
+			// Add number buttons for each possible input count
+			int x = 80;
+			for (int i = gw.gate.type.getMinInputs(); i <= gw.gate.type.getMaxInputs(); i++) {
+				final int count = i;
+				Button numButton;
+				if (i == gw.getInputCount()) {
+					// Create a highlighted button for current input count
+					numButton = new Button(String.valueOf(i), x, 10, 30, 30, e -> {
+						gw.updateInputCount(count);
+						LGS.setScreen(null);
+					}) {
+						@Override
+						public void render(Graphics g, int mouseX, int mouseY) {
+							g.setColor(new Color(100, 150, 255));
+							g.fillRect(getTotalX(), getTotalY(), width, height);
+							super.render(g, mouseX, mouseY);
+						}
+					};
+				} else {
+					// Normal button for other input counts
+					numButton = new Button(String.valueOf(i), x, 10, 30, 30, e -> {
+						gw.updateInputCount(count);
+						LGS.setScreen(null);
+					});
+				}
+				inputPanel.elements.add(numButton);
+				x += 40;
+			}
+			scroll.add(inputPanel);
+		}
+		
 		NicePanel removePanel = new NicePanel(0, 0, scroll.getContentWidth(), 50, false);
 		horizontal(removePanel, removePanel.width,
 				new Button("Remove Gate", 0, 0, 0, 0, this::removeGate),
@@ -69,5 +108,13 @@ public class GateSettingsScreen extends ScrollMenuScreen {
 				LGS.world().connections.remove(link);
 			}
 		}
+	}
+	
+	@Override
+	public void render(Graphics g, int mouseX, int mouseY) {
+		g.setColor(new Color(0, 0, 0, 100));
+		g.fillRect(0, 0, LGS.container().getWidth(), LGS.container().getHeight());
+		
+		super.render(g, mouseX, mouseY);
 	}
 }

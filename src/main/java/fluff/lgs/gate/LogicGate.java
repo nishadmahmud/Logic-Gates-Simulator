@@ -10,10 +10,15 @@ public abstract class LogicGate {
 	public final ButtonConnection[] inputs;
 	public final ButtonConnection[] outputs;
 	
+	protected int inputCount;
+	protected LogicalValue[] inputValues;
+	
 	public LogicGate(IGateType type) {
 		this.type = type;
-		this.inputs = new ButtonConnection[type.getInputs()];
-		for (int i = 0; i < inputs.length; i++) {
+		this.inputCount = type.getDefaultInputs();
+		this.inputValues = new LogicalValue[type.getMaxInputs()];
+		this.inputs = new ButtonConnection[type.getMaxInputs()];
+		for (int i = 0; i < type.getMaxInputs(); i++) {
 			this.inputs[i] = new ButtonConnection(ConnectionType.INPUT, i);
 		}
 		this.outputs = new ButtonConnection[type.getOutputs()];
@@ -25,6 +30,22 @@ public abstract class LogicGate {
 	}
 	
 	public abstract LogicalValue[] getOutputs();
+	
+	public void updateInputCount(int newCount) {
+		if (newCount >= type.getMinInputs() && newCount <= type.getMaxInputs()) {
+			this.inputCount = newCount;
+		}
+	}
+	
+	public int getInputCount() {
+		return inputCount;
+	}
+	
+	protected LogicalValue[] getInputs() {
+		LogicalValue[] result = new LogicalValue[inputCount];
+		System.arraycopy(inputValues, 0, result, 0, inputCount);
+		return result;
+	}
 	
 	protected LogicalValue input(int i) {
 		return inputs[i].getValue();

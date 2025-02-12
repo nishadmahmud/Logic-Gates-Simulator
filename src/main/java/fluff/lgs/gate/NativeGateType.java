@@ -31,7 +31,8 @@ public enum NativeGateType implements IGateType {
 //	},
 	NOT(
 			"NOT",
-			1, 1,
+			1, 1, 1,
+			1,
 			Icons.NOT,
 			"NOT gate. IC No: 7404",
 			null
@@ -43,7 +44,8 @@ public enum NativeGateType implements IGateType {
 	},
 	AND(
 			"AND",
-			2, 1,
+			2, 8, 2,
+			1,
 			Icons.AND,
 			"AND gate. IC No: 7408",
 			null
@@ -55,9 +57,10 @@ public enum NativeGateType implements IGateType {
 	},
 	NAND(
 			"NAND",
-			2, 1,
+			2, 8, 2,
+			1,
 			Icons.NAND,
-			"AND gate. IC No: 7400",
+			"NAND gate. IC No: 7400",
 			null
 			) {
 		@Override
@@ -67,9 +70,10 @@ public enum NativeGateType implements IGateType {
 	},
 	OR(
 			"OR",
-			2, 1,
+			2, 8, 2,
+			1,
 			Icons.OR,
-			"AND gate. IC No: 7432",
+			"OR gate. IC No: 7432",
 			null
 			) {
 		@Override
@@ -79,9 +83,10 @@ public enum NativeGateType implements IGateType {
 	},
 	NOR(
 			"NOR",
-			2, 1,
+			2, 8, 2,
+			1,
 			Icons.NOR,
-			"AND gate. IC No: 7402",
+			"NOR gate. IC No: 7402",
 			null
 			) {
 		@Override
@@ -91,9 +96,10 @@ public enum NativeGateType implements IGateType {
 	},
 	XOR(
 			"XOR",
-			2, 1,
+			2, 2, 2,
+			1,
 			Icons.XOR,
-			"AND gate. IC No: 7486",
+			"XOR gate. IC No: 7486",
 			null
 			) {
 		@Override
@@ -103,9 +109,10 @@ public enum NativeGateType implements IGateType {
 	},
 	XNOR(
 			"XNOR",
-			2, 1,
+			2, 2, 2,
+			1,
 			Icons.XNOR,
-			"AND gate. IC No: 74266",
+			"XNOR gate. IC No: 74266",
 			null
 			) {
 		@Override
@@ -115,7 +122,8 @@ public enum NativeGateType implements IGateType {
 	},
 	INPUT(
 			"INPUT",
-			0, 1,
+			0, 0, 0,
+			1,
 			null,
 			"Input True or False",
 			null
@@ -127,7 +135,8 @@ public enum NativeGateType implements IGateType {
 	},
 	OUTPUT(
 			"OUTPUT",
-			1, 0,
+			1, 1, 1,
+			0,
 			null,
 			"Output True or False",
 			null
@@ -140,15 +149,19 @@ public enum NativeGateType implements IGateType {
 	;
 	
 	private final String id;
-	private final int inputs;
+	private final int minInputs;
+	private final int maxInputs;
+	private final int defaultInputs;
 	private final int outputs;
 	private final Image icon;
 	private final String line1;
 	private final String line2;
 	
-	private NativeGateType(String id, int inputs, int outputs, Image icon, String line1, String line2) {
+	private NativeGateType(String id, int minInputs, int maxInputs, int defaultInputs, int outputs, Image icon, String line1, String line2) {
 		this.id = id;
-		this.inputs = inputs;
+		this.minInputs = minInputs;
+		this.maxInputs = maxInputs;
+		this.defaultInputs = defaultInputs;
 		this.outputs = outputs;
 		this.icon = icon;
 		this.line1 = line1;
@@ -161,8 +174,18 @@ public enum NativeGateType implements IGateType {
 	}
 	
 	@Override
-	public int getInputs() {
-		return inputs;
+	public int getMinInputs() {
+		return minInputs;
+	}
+	
+	@Override
+	public int getMaxInputs() {
+		return maxInputs;
+	}
+	
+	@Override
+	public int getDefaultInputs() {
+		return defaultInputs;
 	}
 	
 	@Override

@@ -1,6 +1,14 @@
 package fluff.lgs.gui.elements.gate;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.awt.Point;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.event.ChangeListener;
 
 import org.lwjgl.Sys;
 import org.newdawn.slick.Image;
@@ -11,6 +19,7 @@ import fluff.lgs.gate.LogicGate;
 import fluff.lgs.gate.LogicalValue;
 import fluff.lgs.gate.impl.InputGate;
 import fluff.lgs.gate.impl.OutputGate;
+import fluff.lgs.gate.connection.Link;
 import fluff.lgs.gui.WindowRegistry;
 import fluff.lgs.gui.elements.Icon;
 import fluff.lgs.gui.elements.ToggleButton;
@@ -18,6 +27,9 @@ import fluff.lgs.gui.elements.Window;
 import fluff.lgs.gui.screens.GateSettingsScreen;
 import fluff.lgs.storage.data.IDataInput;
 import fluff.lgs.storage.values.BooleanValue;
+import fluff.lgs.gate.connection.ConnectionType;
+import fluff.lgs.gui.Element;
+import java.util.Iterator;
 
 public class GateWindow extends Window {
 	
@@ -25,6 +37,23 @@ public class GateWindow extends Window {
 	public static final int CONNECTION_BUTTON_HEIGHT = 20;
 	
 	public LogicGate gate;
+	private int currentInputs;
+	private JSpinner inputCountSpinner;  // For configuration UI
+	
+	private List<Point> inputs = new ArrayList<>();
+	private Map<Integer, Link> inputConnections = new HashMap<>();
+
+	private boolean hasInputConnection(int index) {
+		return inputConnections.containsKey(index);
+	}
+
+	private Link getInputConnection(int index) {
+		return inputConnections.get(index);
+	}
+
+	private void setInputConnection(int index, Link link) {
+		inputConnections.put(index, link);
+	}
 	
 	public GateWindow(WindowRegistry reg) {
 		super(reg, null, 0, 0, 200, TITLE_SIZE);
@@ -40,14 +69,17 @@ public class GateWindow extends Window {
 	}
 	
 	public void init(IGateType type, IDataInput data) throws IOException {
-		height = TITLE_SIZE + Math.max(type.getInputs(), type.getOutputs()) * CONNECTION_HEIGHT;
+		currentInputs = type.getDefaultInputs();
+		height = TITLE_SIZE + Math.max(currentInputs, type.getOutputs()) * CONNECTION_HEIGHT;
 		
 		gate = type.create(this, data);
 		
+		setupInputConfiguration();
+		
 		int yIn = TITLE_SIZE;
-		yIn += (height - yIn) / 2 - type.getInputs() * CONNECTION_HEIGHT / 2;
+		yIn += (height - yIn) / 2 - currentInputs * CONNECTION_HEIGHT / 2;
 		yIn += (CONNECTION_HEIGHT - CONNECTION_BUTTON_HEIGHT) / 2;
-		for (int in = 0; in < type.getInputs(); in++) {
+		for (int in = 0; in < currentInputs; in++) {
 			ButtonConnection b = gate.inputs[in];
 			b.x = -CONNECTION_BUTTON_HEIGHT / 2;
 			b.y = yIn + in * CONNECTION_HEIGHT;
@@ -84,4 +116,87 @@ public class GateWindow extends Window {
 		gw.elements.add(label);
 		return new OutputGate(label);
  	}
+
+	private void setupInputConfiguration() {
+		if (gate != null && gate.type.getMaxInputs() > gate.type.getMinInputs()) {
+			SpinnerNumberModel model = new SpinnerNumberModel(
+				currentInputs,
+				gate.type.getMinInputs(),
+				gate.type.getMaxInputs(),
+				1
+			);
+			inputCountSpinner = new JSpinner(model);
+			inputCountSpinner.addChangeListener(e -> {
+				int newCount = (Integer)inputCountSpinner.getValue();
+				updateInputCount(newCount);
+			});
+			// Add spinner to gate configuration panel
+		}
+	}
+
+	public int getInputCount() {
+		return currentInputs;
+	}
+
+	public void updateInputCount(int newCount) {
+		if (gate != null && newCount >= gate.type.getMinInputs() && newCount <= gate.type.getMaxInputs()) {
+			// Store old connections
+			Map<Integer, Link> oldConnections = new HashMap<>();
+			for (int i = 0; i < currentInputs; i++) {
+				if (hasInputConnection(i)) {
+					oldConnections.put(i, getInputConnection(i));
+				}
+			}
+
+			// Update input count
+			currentInputs = newCount;
+			
+			// Update height based on new input count
+			height = TITLE_SIZE + Math.max(currentInputs, gate.type.getOutputs()) * CONNECTION_HEIGHT;
+			
+			// Remove old input buttons
+			Iterator<Element> it = elements.list.iterator();
+			while (it.hasNext()) {
+				Element e = it.next();
+				if (e instanceof ButtonConnection bc && bc.getType() == ConnectionType.INPUT) {
+					it.remove();
+				}
+			}
+			
+			// Add new input buttons
+			int yIn = TITLE_SIZE;
+			yIn += (height - yIn) / 2 - currentInputs * CONNECTION_HEIGHT / 2;
+			yIn += (CONNECTION_HEIGHT - CONNECTION_BUTTON_HEIGHT) / 2;
+			for (int in = 0; in < currentInputs; in++) {
+				ButtonConnection b = gate.inputs[in];
+				b.x = -CONNECTION_BUTTON_HEIGHT / 2;
+				b.y = yIn + in * CONNECTION_HEIGHT;
+				elements.add(b);
+			}
+
+			// Restore connections that are still valid
+			oldConnections.forEach((index, link) -> {
+				if (index < currentInputs) {
+					setInputConnection(index, link);
+				}
+			});
+
+			// Update gate logic
+			gate.updateInputCount(currentInputs);
+			
+			// Recreate input slots
+			recreateInputSlots();
+		}
+	}
+
+	private void recreateInputSlots() {
+		// Clear existing input slots
+		inputs.clear();
+		
+		// Create new input slots based on currentInputs
+		int spacing = getHeight() / (currentInputs + 1);
+		for (int i = 0; i < currentInputs; i++) {
+			inputs.add(new Point(0, (i + 1) * spacing));
+		}
+	}
 }
