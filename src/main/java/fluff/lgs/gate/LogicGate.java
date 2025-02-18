@@ -34,6 +34,11 @@ public abstract class LogicGate {
 	public void updateInputCount(int newCount) {
 		if (newCount >= type.getMinInputs() && newCount <= type.getMaxInputs()) {
 			this.inputCount = newCount;
+			// Reset input values array to match new count
+			this.inputValues = new LogicalValue[newCount];
+			for (int i = 0; i < newCount; i++) {
+				this.inputValues[i] = LogicalValue.FALSE;
+			}
 		}
 	}
 	
@@ -41,13 +46,23 @@ public abstract class LogicGate {
 		return inputCount;
 	}
 	
-	protected LogicalValue[] getInputs() {
-		LogicalValue[] result = new LogicalValue[inputCount];
-		System.arraycopy(inputValues, 0, result, 0, inputCount);
-		return result;
+	protected LogicalValue input(int i) {
+		if (i >= 0 && i < inputCount) {
+			ButtonConnection connection = inputs[i];
+			if (connection != null && connection.from != null) {
+				return connection.getValue();
+			}
+		}
+		return LogicalValue.FALSE;
 	}
 	
-	protected LogicalValue input(int i) {
-		return inputs[i].getValue();
+	protected LogicalValue[] getInputs() {
+		LogicalValue[] result = new LogicalValue[inputCount];
+		for (int i = 0; i < inputCount; i++) {
+			result[i] = input(i);
+			// Cache the input value
+			inputValues[i] = result[i];
+		}
+		return result;
 	}
 }

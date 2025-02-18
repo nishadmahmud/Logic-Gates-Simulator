@@ -52,7 +52,21 @@ public class GateWindow extends Window {
 	}
 
 	private void setInputConnection(int index, Link link) {
-		inputConnections.put(index, link);
+		if (index < currentInputs && gate != null) {
+			// Clear any existing connection
+			Link existingLink = LGS.world().connections.findTo(gate.inputs[index]);
+			if (existingLink != null) {
+				LGS.world().connections.remove(existingLink);
+			}
+			
+			// Set up new connection
+			gate.inputs[index].from = link.from;
+			
+			// Add new connection to world
+			if (!LGS.world().connections.list.contains(link)) {
+				LGS.world().connections.addOrRemove(link.from, gate.inputs[index]);
+			}
+		}
 	}
 	
 	public GateWindow(WindowRegistry reg) {
@@ -139,64 +153,103 @@ public class GateWindow extends Window {
 	}
 
 	public void updateInputCount(int newCount) {
-		if (gate != null && newCount >= gate.type.getMinInputs() && newCount <= gate.type.getMaxInputs()) {
-			// Store old connections
-			Map<Integer, Link> oldConnections = new HashMap<>();
-			for (int i = 0; i < currentInputs; i++) {
-				if (hasInputConnection(i)) {
-					oldConnections.put(i, getInputConnection(i));
+		try {
+			if (gate != null && newCount >= gate.type.getMinInputs() && newCount <= gate.type.getMaxInputs()) {
+				// Store existing connections
+				Map<Integer, Link> oldConnections = new HashMap<>();
+				for (int i = 0; i < Math.min(currentInputs, gate.inputs.length); i++) {
+					if (gate.inputs[i] != null) {
+						Link link = LGS.world().connections.findTo(gate.inputs[i]);
+						if (link != null) {
+							oldConnections.put(i, link);
+							// Remove old connection
+							LGS.world().connections.remove(link);
+						}
+					}
 				}
-			}
-
-			// Update input count
-			currentInputs = newCount;
-			
-			// Update height based on new input count
-			height = TITLE_SIZE + Math.max(currentInputs, gate.type.getOutputs()) * CONNECTION_HEIGHT;
-			
-			// Remove old input buttons
-			Iterator<Element> it = elements.list.iterator();
-			while (it.hasNext()) {
-				Element e = it.next();
-				if (e instanceof ButtonConnection bc && bc.getType() == ConnectionType.INPUT) {
-					it.remove();
+				
+				// Update current inputs count and height
+				currentInputs = newCount;
+				height = TITLE_SIZE + Math.max(currentInputs, gate.type.getOutputs()) * CONNECTION_HEIGHT;
+				
+				// Remove all input buttons safely
+				Iterator<Element> it = elements.list.iterator();
+				while (it.hasNext()) {
+					Element e = it.next();
+					if (e instanceof ButtonConnection && ((ButtonConnection)e).getType() == ConnectionType.INPUT) {
+						// Clear connection before removing
+						if (e instanceof ButtonConnection bc) {
+							bc.from = null;
+						}
+						it.remove();
+					}
 				}
-			}
-			
-			// Add new input buttons
-			int yIn = TITLE_SIZE;
-			yIn += (height - yIn) / 2 - currentInputs * CONNECTION_HEIGHT / 2;
-			yIn += (CONNECTION_HEIGHT - CONNECTION_BUTTON_HEIGHT) / 2;
-			for (int in = 0; in < currentInputs; in++) {
-				ButtonConnection b = gate.inputs[in];
-				b.x = -CONNECTION_BUTTON_HEIGHT / 2;
-				b.y = yIn + in * CONNECTION_HEIGHT;
-				elements.add(b);
-			}
-
-			// Restore connections that are still valid
-			oldConnections.forEach((index, link) -> {
-				if (index < currentInputs) {
-					setInputConnection(index, link);
+				
+				// Update gate logic first
+				gate.updateInputCount(currentInputs);
+				
+				// Recreate input slots
+				recreateInputSlots();
+				
+				// Add new input buttons with proper spacing
+				int yIn = TITLE_SIZE;
+				yIn += (height - yIn) / 2 - currentInputs * CONNECTION_HEIGHT / 2;
+				yIn += (CONNECTION_HEIGHT - CONNECTION_BUTTON_HEIGHT) / 2;
+				for (int in = 0; in < currentInputs; in++) {
+					if (gate.inputs[in] != null) {
+						ButtonConnection b = gate.inputs[in];
+						b.parent = this;  // Set the parent reference
+						b.x = -CONNECTION_BUTTON_HEIGHT / 2;
+						b.y = yIn + in * CONNECTION_HEIGHT;
+						elements.add(b);
+					}
 				}
-			});
 
-			// Update gate logic
-			gate.updateInputCount(currentInputs);
-			
-			// Recreate input slots
-			recreateInputSlots();
+				// Ensure outputs have parent references too
+				for (ButtonConnection output : gate.outputs) {
+					if (output != null) {
+						output.parent = this;
+						if (output.from instanceof ButtonConnection) {
+							ButtonConnection fromButton = (ButtonConnection) output.from;
+							fromButton.parent = this;
+						}
+					}
+				}
+
+				// Restore valid connections
+				oldConnections.forEach((index, link) -> {
+					if (index < currentInputs && gate.inputs[index] != null) {
+						// Set parent references before creating new connection
+						gate.inputs[index].parent = this;
+						if (link.from instanceof ButtonConnection) {
+							ButtonConnection fromButton = (ButtonConnection) link.from;
+							fromButton.parent = fromButton.parent;
+						}
+						// Create new connection
+						LGS.world().connections.addOrRemove(link.from, gate.inputs[index]);
+					}
+				});
+			}
+		} catch (Exception e) {
+			System.err.println("Error updating input count: " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
 	private void recreateInputSlots() {
-		// Clear existing input slots
-		inputs.clear();
-		
-		// Create new input slots based on currentInputs
-		int spacing = getHeight() / (currentInputs + 1);
-		for (int i = 0; i < currentInputs; i++) {
-			inputs.add(new Point(0, (i + 1) * spacing));
+		try {
+			inputs.clear();
+			
+			// Create new input slots based on currentInputs
+			if (currentInputs > 0) {
+				int spacing = getHeight() / (currentInputs + 1);
+				for (int i = 0; i < currentInputs; i++) {
+					inputs.add(new Point(0, (i + 1) * spacing));
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("Error recreating input slots: " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 }

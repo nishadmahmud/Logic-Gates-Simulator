@@ -9,10 +9,23 @@
       <change beforePath="$PROJECT_DIR$/.gradle/8.0-milestone-3/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.0-milestone-3/fileHashes/fileHashes.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/8.0-milestone-3/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.0-milestone-3/fileHashes/fileHashes.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/file-system.probe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/ToolsBar.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/ToolsBar.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/EquationScreen.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/EquationScreen.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/World.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/World.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/LogicGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/LogicGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/NativeGateType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/NativeGateType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/connection/Connections.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/connection/Connections.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/AndGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/AndGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/NandGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/NandGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/NorGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/NorGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/OrGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/OrGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/XnorGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/XnorGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/XorGate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gate/impl/natives/XorGate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/elements/gate/GateWindow.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/elements/gate/GateWindow.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/elements/gate/WorldButton.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/elements/gate/WorldButton.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/TimingDiagramScreen.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/TimingDiagramScreen.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/WorldSettingsScreen.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/gui/screens/WorldSettingsScreen.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/storage/Worlds.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/storage/Worlds.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fluff/lgs/storage/impl/WorldStorage.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fluff/lgs/storage/impl/WorldStorage.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

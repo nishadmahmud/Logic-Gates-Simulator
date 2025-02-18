@@ -109,21 +109,48 @@ public class Connections implements IDataParser {
 	
 	@Override
 	public void read(IDataInput data) throws IOException {
-		world.currentConnection = null;
-		
-		list.clear();
-		int connectionsSize = data.Int();
-		for (int i = 0; i < connectionsSize; i++) {
-			GateWindow fromWindow = (GateWindow) world.windowReg.lookup(data.Long());
-			int fromIndex = data.Int();
-			GateWindow toWindow = (GateWindow) world.windowReg.lookup(data.Long());
-			int toIndex = data.Int();
+		try {
+			world.currentConnection = null;
 			
-			ButtonConnection from = fromWindow.gate.outputs[fromIndex];
-			ButtonConnection to = toWindow.gate.inputs[toIndex];
-			to.from = from;
-			
-			list.add(new Link(from, to));
+			list.clear();
+			int connectionsSize = data.Int();
+			for (int i = 0; i < connectionsSize; i++) {
+				GateWindow fromWindow = (GateWindow) world.windowReg.lookup(data.Long());
+				int fromIndex = data.Int();
+				GateWindow toWindow = (GateWindow) world.windowReg.lookup(data.Long());
+				int toIndex = data.Int();
+				
+				// Safety checks
+				if (fromWindow == null || toWindow == null) {
+					System.err.println("Warning: Null window reference in connection loading");
+					continue;
+				}
+				
+				// Validate indices
+				if (fromIndex >= fromWindow.gate.outputs.length || toIndex >= toWindow.gate.inputs.length) {
+					System.err.println("Warning: Invalid connection indices");
+					continue;
+				}
+				
+				ButtonConnection from = fromWindow.gate.outputs[fromIndex];
+				ButtonConnection to = toWindow.gate.inputs[toIndex];
+				
+				// Set parent references
+				from.parent = fromWindow;
+				to.parent = toWindow;
+				
+				// Set the connection
+				to.from = from;
+				
+				// Add to connection list
+				Link link = new Link(from, to);
+				list.add(link);
+			}
+		} catch (Exception e) {
+			System.err.println("Error loading connections: " + e.getMessage());
+			e.printStackTrace();
+			// Clear any partial connections to prevent crashes
+			list.clear();
 		}
 	}
 	

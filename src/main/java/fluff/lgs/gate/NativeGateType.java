@@ -96,7 +96,7 @@ public enum NativeGateType implements IGateType {
 	},
 	XOR(
 			"XOR",
-			2, 2, 2,
+			2, 4, 2,
 			1,
 			Icons.XOR,
 			"XOR gate. IC No: 7486",
@@ -109,7 +109,7 @@ public enum NativeGateType implements IGateType {
 	},
 	XNOR(
 			"XNOR",
-			2, 2, 2,
+			2, 4, 2,
 			1,
 			Icons.XNOR,
 			"XNOR gate. IC No: 74266",

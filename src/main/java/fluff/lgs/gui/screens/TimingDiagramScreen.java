@@ -15,12 +15,20 @@ import fluff.lgs.gate.LogicalValue;
 import fluff.lgs.gate.NativeGateType;
 import fluff.lgs.gate.impl.InputGate;
 import fluff.lgs.gate.impl.OutputGate;
+import fluff.lgs.gate.impl.natives.AndGate;
+import fluff.lgs.gate.impl.natives.OrGate;
+import fluff.lgs.gate.impl.natives.NandGate;
+import fluff.lgs.gate.impl.natives.NorGate;
+import fluff.lgs.gate.impl.natives.XorGate;
+import fluff.lgs.gate.impl.natives.XnorGate;
 import fluff.lgs.gui.elements.gate.GateWindow;
 import fluff.lgs.gui.elements.gate.GateOutputLabel;
 import fluff.lgs.gui.elements.ToggleButton;
 import fluff.lgs.gui.Element;
 import fluff.lgs.gate.IGateType;
 import fluff.lgs.gui.elements.gate.ButtonConnection;
+import fluff.lgs.gate.connection.ConnectionType;
+import fluff.lgs.gate.connection.IConnection;
 
 public class TimingDiagramScreen extends JFrame {
     private static TimingDiagramScreen instance;
@@ -280,7 +288,7 @@ public class TimingDiagramScreen extends JFrame {
     private void updateHistories(List<GateWindow> inputGates, List<GateWindow> outputGates) {
         // Initialize histories if needed
         if (inputHistory.isEmpty()) {
-            // Initialize input patterns (same as before)
+            // Initialize input patterns
             for (int i = 0; i < inputGates.size(); i++) {
                 Boolean[] history = new Boolean[TIME_STEPS];
                 for (int t = 0; t < TIME_STEPS; t++) {
@@ -290,26 +298,113 @@ public class TimingDiagramScreen extends JFrame {
             }
 
             // Initialize output histories
-            for (int i = 0; i < outputGates.size(); i++) {
+            outputHistory.clear();
+            for (GateWindow outputGate : outputGates) {
                 Boolean[] history = new Boolean[TIME_STEPS];
-                // For each time step, calculate output from truth table
-                for (int t = 0; t < TIME_STEPS; t++) {
-                    // Get input values for this time step
-                    LogicalValue[] inputs = new LogicalValue[inputGates.size()];
-                    for (int j = 0; j < inputGates.size(); j++) {
-                        inputs[j] = inputHistory.get(j)[t] ? LogicalValue.TRUE : LogicalValue.FALSE;
-                    }
+                
+                // Get the gate that feeds into this output
+                List<GateWindow> sourceGates = EquationScreen.getInputConnections(outputGate);
+                if (!sourceGates.isEmpty()) {
+                    GateWindow sourceGate = sourceGates.get(0);
                     
-                    // Calculate output using truth table logic
-                    GateWindow outputGate = outputGates.get(i);
-                    if (outputGate.gate instanceof OutputGate) {
-                        // Get the input connection to this output gate
-                        List<GateWindow> gateInputs = EquationScreen.getInputConnections(outputGate);
-                        if (!gateInputs.isEmpty()) {
-                            // Use the equation to evaluate the output
-                            String equation = EquationScreen.generateEquation(gateInputs.get(0));
-                            history[t] = evaluateEquation(equation, inputGates, inputs);
+                    // For each time step
+                    for (int t = 0; t < TIME_STEPS; t++) {
+                        // Find which input gates are connected to this gate's inputs
+                        Map<Integer, Integer> inputConnections = new HashMap<>();
+                        for (int i = 0; i < sourceGate.gate.getInputCount(); i++) {
+                            ButtonConnection input = sourceGate.gate.inputs[i];
+                            for (int j = 0; j < inputGates.size(); j++) {
+                                if (input != null && input.from != null && 
+                                    input.from == inputGates.get(j).gate.outputs[0]) {
+                                    inputConnections.put(i, j);
+                                    break;
+                                }
+                            }
                         }
+
+                        // Set up input values for this time step
+                        LogicalValue[] gateInputs = new LogicalValue[sourceGate.gate.getInputCount()];
+                        // Initialize all inputs to FALSE first
+                        for (int i = 0; i < gateInputs.length; i++) {
+                            gateInputs[i] = LogicalValue.FALSE;
+                        }
+                        // Then set the connected inputs
+                        for (Map.Entry<Integer, Integer> conn : inputConnections.entrySet()) {
+                            gateInputs[conn.getKey()] = inputHistory.get(conn.getValue())[t] ? 
+                                LogicalValue.TRUE : LogicalValue.FALSE;
+                        }
+
+                        // Evaluate the gate based on its type
+                        boolean output = false;
+                        
+                        // First check if all required inputs are connected
+                        boolean allInputsConnected = true;
+                        for (int i = 0; i < sourceGate.gate.getInputCount(); i++) {
+                            ButtonConnection input = sourceGate.gate.inputs[i];
+                            if (input == null || input.from == null) {
+                                allInputsConnected = false;
+                                break;
+                            }
+                        }
+
+                        if (!allInputsConnected) {
+                            history[t] = null;  // Use null to represent undefined
+                            continue;
+                        }
+
+                        if (sourceGate.gate instanceof AndGate) {
+                            output = true;
+                            for (LogicalValue input : gateInputs) {
+                                if (input != LogicalValue.TRUE) {
+                                    output = false;
+                                    break;
+                                }
+                            }
+                        } else if (sourceGate.gate instanceof OrGate) {
+                            output = false;
+                            for (LogicalValue input : gateInputs) {
+                                if (input == LogicalValue.TRUE) {
+                                    output = true;
+                                    break;
+                                }
+                            }
+                        } else if (sourceGate.gate instanceof NandGate) {
+                            output = true;
+                            boolean allTrue = true;
+                            for (LogicalValue input : gateInputs) {
+                                if (input != LogicalValue.TRUE) {
+                                    allTrue = false;
+                                    break;
+                                }
+                            }
+                            output = !allTrue;
+                        } else if (sourceGate.gate instanceof NorGate) {
+                            output = true;
+                            for (LogicalValue input : gateInputs) {
+                                if (input == LogicalValue.TRUE) {
+                                    output = false;
+                                    break;
+                                }
+                            }
+                        } else if (sourceGate.gate instanceof XorGate) {
+                            int trueCount = 0;
+                            for (LogicalValue input : gateInputs) {
+                                if (input == LogicalValue.TRUE) {
+                                    trueCount++;
+                                }
+                            }
+                            output = (trueCount % 2) == 1;
+                        } else if (sourceGate.gate instanceof XnorGate) {
+                            int trueCount = 0;
+                            for (LogicalValue input : gateInputs) {
+                                if (input == LogicalValue.TRUE) {
+                                    trueCount++;
+                                }
+                            }
+                            output = (trueCount % 2) == 0;
+                        }
+
+                        history[t] = output;
                     }
                 }
                 outputHistory.add(history);
