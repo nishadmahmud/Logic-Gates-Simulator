@@ -14,6 +14,7 @@ import fluff.lgs.gui.screens.SaveLoadScreen;
 import fluff.lgs.gui.screens.SettingsScreen;
 import fluff.lgs.gui.screens.TruthTableScreen;
 import fluff.lgs.gui.screens.EquationScreen;
+import fluff.lgs.gui.screens.TimingDiagramScreen;
 import fluff.lgs.utils.Colors;
 
 public class ToolsBar implements ILayer, IParent {
@@ -35,6 +36,9 @@ public class ToolsBar implements ILayer, IParent {
 		});
 		addButton("Equation", e -> {
 			EquationScreen.showWindow();
+		});
+		addButton("Timing", e -> {
+			TimingDiagramScreen.showWindow();
 		});
 		addButton("Settings", e -> {
 			LGS.setScreen(new SettingsScreen());

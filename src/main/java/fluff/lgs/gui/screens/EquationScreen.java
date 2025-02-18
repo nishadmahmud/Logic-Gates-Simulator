@@ -109,21 +109,19 @@ public class EquationScreen extends JFrame {
         add(mainPanel);
     }
 
-    private String generateEquation(GateWindow outputGate) {
+    public static String generateEquation(GateWindow outputGate) {
         if (outputGate.gate instanceof OutputGate) {
-            // Get the input connection to this output gate
             List<GateWindow> inputs = getInputConnections(outputGate);
-            if (inputs.isEmpty()) {
-                return "undefined";
-            }
-            // For output gates, we just need to get the equation of its input
+            if (inputs.isEmpty()) return "undefined";
             return generateEquation(inputs.get(0));
         }
         
-        // Handle different gate types
         IGateType type = outputGate.gate.type;
         
-        if (type == NativeGateType.NOT) {
+        if (type == NativeGateType.INPUT) {
+            return outputGate.title;
+        }
+        else if (type == NativeGateType.NOT) {
             List<GateWindow> notInputs = getInputConnections(outputGate);
             if (notInputs.isEmpty()) return "undefined";
             return "!" + addParenthesesIfNeeded(generateEquation(notInputs.get(0)));
@@ -170,33 +168,24 @@ public class EquationScreen extends JFrame {
                 .map(in -> addParenthesesIfNeeded(generateEquation(in)))
                 .collect(Collectors.joining(" ⊕ ")) + ")";
         }
-        else if (type == NativeGateType.INPUT) {
-            return outputGate.title;
-        }
         
         return "undefined";
     }
-    
-    private List<GateWindow> getInputConnections(GateWindow gate) {
+
+    public static List<GateWindow> getInputConnections(GateWindow gate) {
         List<GateWindow> inputs = new ArrayList<>();
-        
-        // Get all connections from the world
         for (Link link : LGS.world().connections.list) {
-            // If this connection ends at our gate
             if (link.to.parent instanceof GateWindow && link.to.parent == gate) {
-                // Add the source gate if it's a GateWindow
                 if (link.from.parent instanceof GateWindow sourceGate) {
                     inputs.add(sourceGate);
                 }
             }
         }
-        
         return inputs;
     }
-    
-    private String addParenthesesIfNeeded(String expr) {
-        // Add parentheses if expression contains operators
-        if (expr.contains(" + ") || expr.contains(" • ") || expr.contains(" ⊕ ")) {
+
+    private static String addParenthesesIfNeeded(String expr) {
+        if (expr.contains(" ") && !expr.startsWith("(")) {
             return "(" + expr + ")";
         }
         return expr;
@@ -335,7 +324,7 @@ public class EquationScreen extends JFrame {
         }
     }
 
-    private boolean evaluateEquation(String equation, Map<String, Boolean> assignments) {
+    public static boolean evaluateEquation(String equation, Map<String, Boolean> assignments) {
         // Remove spaces
         equation = equation.replaceAll("\\s+", "");
         
