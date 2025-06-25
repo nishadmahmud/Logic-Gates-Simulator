@@ -12,6 +12,9 @@ import javax.swing.event.ChangeListener;
 
 import org.lwjgl.Sys;
 import org.newdawn.slick.Image;
+import org.newdawn.slick.Graphics;
+import java.awt.Color;
+import java.awt.Font;
 
 import fluff.lgs.LGS;
 import fluff.lgs.gate.IGateType;
@@ -30,6 +33,7 @@ import fluff.lgs.storage.values.BooleanValue;
 import fluff.lgs.gate.connection.ConnectionType;
 import fluff.lgs.gui.Element;
 import java.util.Iterator;
+import org.newdawn.slick.Input;
 
 public class GateWindow extends Window {
 	
@@ -69,6 +73,13 @@ public class GateWindow extends Window {
 		}
 	}
 	
+	private boolean selected = false;
+	private static List<GateWindow> selectedGates = new ArrayList<>();
+	
+	// Add fields to track drag offset
+	private int dragStartX;
+	private int dragStartY;
+	
 	public GateWindow(WindowRegistry reg) {
 		super(reg, null, 0, 0, 200, TITLE_SIZE);
 	}
@@ -77,9 +88,44 @@ public class GateWindow extends Window {
 	public void mousePress(int button, int mouseX, int mouseY) {
 		super.mousePress(button, mouseX, mouseY);
 		
-		if (!hovered || found) return;
+		if (!hovered) return;  // Don't process if not hovered
 		
-		if (button == 1 && canDrag(mouseX, mouseY)) LGS.setScreen(new GateSettingsScreen(this));
+		if (button == 1 && canDrag(mouseX, mouseY)) {
+			LGS.setScreen(new GateSettingsScreen(this));
+		} else if (button == 0) {  // Left click
+			if (LGS.container().getInput().isKeyDown(Input.KEY_LCONTROL)) {
+				// Toggle selection when Ctrl is held
+				setSelected(!selected);
+			} else if (!selected) {
+				// Clear other selections and select only this gate
+				clearSelection();
+				setSelected(true);
+			}
+			
+			// Store drag start position
+			if (canDrag(mouseX, mouseY)) {
+				dragStartX = mouseX;
+				dragStartY = mouseY;
+			}
+		}
+	}
+	
+	@Override
+	public void mouseDrag(int oldX, int oldY, int mouseX, int mouseY) {
+		if (dragging && selected) {
+			// Calculate the movement delta
+			int deltaX = mouseX - oldX;
+			int deltaY = mouseY - oldY;
+			
+			// Move all selected gates
+			for (GateWindow gate : selectedGates) {
+				gate.x += deltaX;
+				gate.y += deltaY;
+			}
+		} else {
+			// Call super only if we're not handling multi-gate drag
+			super.mouseDrag(oldX, oldY, mouseX, mouseY);
+		}
 	}
 	
 	public void init(IGateType type, IDataInput data) throws IOException {
@@ -113,7 +159,9 @@ public class GateWindow extends Window {
 	
 	public static LogicGate nativeGate(GateWindow gw, LogicGate gate) {
 		Image icon = gate.type.getIcon();
-		gw.elements.add(new Icon(icon, gw.width / 2 - icon.getWidth() / 2, TITLE_SIZE + (gw.height - TITLE_SIZE) / 2 - icon.getHeight() / 2, icon.getWidth(), icon.getHeight()));
+		if (icon != null) {
+			gw.elements.add(new Icon(icon, gw.width / 2 - icon.getWidth() / 2, TITLE_SIZE + (gw.height - TITLE_SIZE) / 2 - icon.getHeight() / 2, icon.getWidth(), icon.getHeight()));
+		}
 		return gate;
 	}
 	
@@ -133,18 +181,8 @@ public class GateWindow extends Window {
 
 	private void setupInputConfiguration() {
 		if (gate != null && gate.type.getMaxInputs() > gate.type.getMinInputs()) {
-			SpinnerNumberModel model = new SpinnerNumberModel(
-				currentInputs,
-				gate.type.getMinInputs(),
-				gate.type.getMaxInputs(),
-				1
-			);
-			inputCountSpinner = new JSpinner(model);
-			inputCountSpinner.addChangeListener(e -> {
-				int newCount = (Integer)inputCountSpinner.getValue();
-				updateInputCount(newCount);
-			});
-			// Add spinner to gate configuration panel
+			// Remove JSpinner creation since it's causing the gray box
+			// We'll handle input count changes differently if needed
 		}
 	}
 
@@ -251,5 +289,105 @@ public class GateWindow extends Window {
 			System.err.println("Error recreating input slots: " + e.getMessage());
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public void render(Graphics g, int mouseX, int mouseY) {
+		// Draw the gate and connections first
+		super.render(g, mouseX, mouseY);
+		
+		// Draw selection highlight
+		if (selected) {
+			g.setColor(org.newdawn.slick.Color.blue);
+			g.setLineWidth(2);
+			g.drawRect(0, 0, width, height);  // Keep drawing at (0,0) in local coordinates
+			g.setLineWidth(1);
+		}
+		
+		// Set color for labels
+		g.setColor(org.newdawn.slick.Color.white);
+		
+		// Draw input labels
+		if (gate != null) {
+			for (int i = 0; i < gate.getInputCount(); i++) {
+				String label = gate.getInputLabel(i);
+				if (label != null) {
+					int y = TITLE_SIZE + (height - TITLE_SIZE) / 2 - gate.getInputCount() * CONNECTION_HEIGHT / 2 
+						+ i * CONNECTION_HEIGHT + CONNECTION_HEIGHT/2;
+					g.drawString(label, 5, y);
+				}
+			}
+			
+			// Draw output labels
+			for (int i = 0; i < gate.outputs.length; i++) {
+				String label = gate.getOutputLabel(i);
+				if (label != null) {
+					int y = TITLE_SIZE + (height - TITLE_SIZE) / 2 - gate.outputs.length * CONNECTION_HEIGHT / 2 
+						+ i * CONNECTION_HEIGHT + CONNECTION_HEIGHT/2;
+					g.drawString(label, width - 25, y);
+				}
+			}
+		}
+	}
+
+	public void setSelected(boolean selected) {
+		this.selected = selected;
+		if (selected && !selectedGates.contains(this)) {
+			selectedGates.add(this);
+		} else if (!selected) {
+			selectedGates.remove(this);
+		}
+	}
+
+	public boolean isSelected() {
+		return selected;
+	}
+
+	public static List<GateWindow> getSelectedGates() {
+		return selectedGates;
+	}
+
+	public static void clearSelection() {
+		for (GateWindow gate : selectedGates) {
+			gate.selected = false;
+		}
+		selectedGates.clear();
+	}
+
+	public GateWindow createCopy() {
+		GateWindow copy = new GateWindow(LGS.world().windowReg);
+		copy.x = this.x;
+		copy.y = this.y;
+		copy.width = this.width;
+		copy.height = this.height;
+		copy.title = this.title;  // Copy the title
+		
+		if (this.gate != null) {
+			copy.gate = this.gate.createCopy();
+			try {
+				// Initialize the gate properly
+				copy.init(this.gate.type, null);
+				copy.currentInputs = this.currentInputs;
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return copy;
+	}
+
+	// Add method to check if mouse is over any selected gate
+	public static boolean isMouseOverSelectedGate(int x, int y) {
+		for (GateWindow gate : selectedGates) {
+			if (gate.isMouseOver(x, y)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isMouseOver(int x, int y) {
+		// Use the built-in hover check from Window class
+		return hovered;
 	}
 }

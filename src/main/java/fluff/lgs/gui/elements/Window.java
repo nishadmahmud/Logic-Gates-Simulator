@@ -15,7 +15,7 @@ public class Window extends Panel {
 	
 	public static final int TITLE_SIZE = 20;
 	
-	private boolean dragging;
+	protected boolean dragging;
 	
 	public WindowRegistry reg;
 	public long winID;

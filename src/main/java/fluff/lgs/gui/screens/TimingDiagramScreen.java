@@ -36,16 +36,18 @@ public class TimingDiagramScreen extends JFrame {
     private JPanel diagramPanel;
     private final Color BACKGROUND_COLOR = new Color(30, 30, 30);
     private final Color SIGNAL_COLOR = new Color(0, 255, 0);
-    private int TIME_STEPS;  // Will be set based on input count (2^n)
-    private static final int WINDOW_WIDTH = 800;
+    private static final int TIME_STEPS = 20;  // Show last 20 states
+    private static final int UPDATE_INTERVAL = 100;  // Update every 100ms
+    private static final int WINDOW_WIDTH = 500;
     private static final int WINDOW_HEIGHT = 360;  // Reduced from 600
     private final int SIGNAL_HEIGHT = 40;  // Keep original value
     private final int SIGNAL_SPACING = 60;  // Keep original value
     
-    private List<Boolean[]> inputHistory;
-    private List<Boolean[]> outputHistory;
+    private Map<GateWindow, List<LogicalValue>> inputHistory = new HashMap<>();
+    private Map<GateWindow, List<LogicalValue>> outputHistory = new HashMap<>();
     private List<String> inputNames;
     private List<String> outputNames;
+    private GateWindow gateWindow;
 
     public static void showWindow() {
         SwingUtilities.invokeLater(() -> {
@@ -75,19 +77,14 @@ public class TimingDiagramScreen extends JFrame {
         setLocation(screenSize.width - getWidth() - 50, 100);
         
         // Initialize data structures
-        inputHistory = new ArrayList<>();
-        outputHistory = new ArrayList<>();
         inputNames = new ArrayList<>();
         outputNames = new ArrayList<>();
-        
-        // Initialize with default TIME_STEPS
-        TIME_STEPS = 0;  // Will be set in updateDiagram
         
         // Setup UI
         setupUI();
         
         // Start update timer
-        updateTimer = new Timer(100, e -> updateDiagram());
+        updateTimer = new Timer(UPDATE_INTERVAL, e -> updateDiagram());
         updateTimer.start();
         
         // Add window listener
@@ -125,124 +122,195 @@ public class TimingDiagramScreen extends JFrame {
     }
 
     private void drawTimingDiagram(Graphics g) {
-        // Don't draw if TIME_STEPS is not initialized
-        if (TIME_STEPS == 0) return;
-        
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Draw equations at top with less spacing
-        String formula = buildFormula();
-        g2d.setColor(Color.WHITE);
-        String[] equations = formula.split("\n");
-        int y = 15;
-        for (String equation : equations) {
-            g2d.drawString(equation, 10, y);
-            y += 20;  // Keep original spacing
-        }
-        
         int labelWidth = 100;
         int timeStepWidth = (getWidth() - labelWidth - 50) / TIME_STEPS;
+        int y = 50;  // Starting y position
         
-        // Draw vertical grid lines
-        g2d.setColor(new Color(60, 60, 60));  // Darker color for grid
+        // Draw grid
+        g2d.setColor(new Color(60, 60, 60));
         for (int i = 0; i <= TIME_STEPS; i++) {
             int x = labelWidth + i * timeStepWidth;
             g2d.drawLine(x, 30, x, getHeight() - 30);
         }
         
+        // Check if we're dealing with an encoder
+        boolean isEncoder = false;
+        GateWindow sourceGate = null;
+        for (GateWindow output : outputHistory.keySet()) {
+            ButtonConnection input = output.gate.inputs[0];
+            if (input != null && input.from instanceof ButtonConnection fromButton 
+                && fromButton.parent instanceof GateWindow gw) {
+                if (gw.gate.type == NativeGateType.ENCODER_4TO2 
+                    || gw.gate.type == NativeGateType.ENCODER_8TO3) {
+                    isEncoder = true;
+                    sourceGate = gw;
+                    break;
+                }
+            }
+        }
+        
+        if (isEncoder && sourceGate != null) {
+            // Draw encoder-specific signals
+            drawEncoderSignals(g2d, sourceGate, labelWidth, timeStepWidth);
+        } else {
+            // Draw regular signals
+            drawRegularSignals(g2d, labelWidth, timeStepWidth);
+        }
+    }
+
+    private void drawEncoderSignals(Graphics2D g2d, GateWindow encoder, int labelWidth, int timeStepWidth) {
+        int y = 50;
+        g2d.setColor(SIGNAL_COLOR);
+        
+        // Draw input signals with "don't care" states
+        int inputCount = encoder.gate.type == NativeGateType.ENCODER_4TO2 ? 4 : 8;
+        for (int i = 0; i < inputCount; i++) {
+            String name = "I" + i;
+            g2d.drawString(name, 10, y + SIGNAL_HEIGHT/2);
+            
+            // Draw signal with "don't care" regions
+            if (inputHistory.containsKey(encoder)) {
+                List<LogicalValue> history = inputHistory.get(encoder);
+                if (history != null) {
+                    drawEncoderInputSignal(g2d, history, i, labelWidth, y, timeStepWidth);
+                }
+            }
+            y += SIGNAL_SPACING;
+        }
+        
+        // Draw output signals
+        int outputCount = encoder.gate.type == NativeGateType.ENCODER_4TO2 ? 2 : 3;
+        for (int i = 0; i < outputCount; i++) {
+            String name = "Y" + i;
+            g2d.drawString(name, 10, y + SIGNAL_HEIGHT/2);
+            
+            // Draw output signal
+            if (outputHistory.containsKey(encoder)) {
+                List<LogicalValue> history = outputHistory.get(encoder);
+                if (history != null) {
+                    drawSignal(g2d, history, labelWidth, y, timeStepWidth);
+                }
+            }
+            y += SIGNAL_SPACING;
+        }
+    }
+
+    private void drawEncoderInputSignal(Graphics2D g2d, List<LogicalValue> history, int inputIndex, 
+                                      int labelWidth, int y, int timeStepWidth) {
+        // Draw signal with "don't care" regions based on encoder truth table
+        // Implementation depends on your specific requirements for visualizing "don't care" states
+        // You might want to use a different color or pattern for "don't care" regions
+    }
+
+    private void drawRegularSignals(Graphics2D g2d, int labelWidth, int timeStepWidth) {
+        int y = 50;  // Add this line to define y
+        
         // Draw input signals
         g2d.setColor(SIGNAL_COLOR);
         for (int i = 0; i < inputNames.size(); i++) {
-            // Draw signal name and value markers
-            g2d.drawString(inputNames.get(i), 10, y + SIGNAL_HEIGHT/2);
-            g2d.drawString("1", labelWidth - 20, y + 15);
-            g2d.drawString("0", labelWidth - 20, y + SIGNAL_HEIGHT - 5);
+            String name = inputNames.get(i);
+            GateWindow inputGate = findGateByName(name);
+            if (inputGate != null) {
+                // Draw signal name
+                g2d.drawString(name, 10, y + SIGNAL_HEIGHT/2);
+                
+                // Get current state
+                LogicalValue currentState = LogicalValue.UNDEFINED;
+                List<LogicalValue> history = inputHistory.get(inputGate);
+                if (history != null && !history.isEmpty()) {
+                    currentState = history.get(history.size() - 1);
+                }
+                
+                // Draw state label
+                String stateLabel = getStateLabel(currentState);
+                g2d.drawString(stateLabel, labelWidth - 25, y + SIGNAL_HEIGHT/2);
             
-            // Draw signal
-            if (i < inputHistory.size()) {
-                drawSignal(g2d, inputHistory.get(i), labelWidth, y, timeStepWidth);
+                // Draw signal
+                if (history != null) {
+                    drawSignal(g2d, history, labelWidth, y, timeStepWidth);
+                }
+                
+                y += SIGNAL_SPACING;
             }
-            
-            y += SIGNAL_SPACING;
         }
         
         // Draw output signals
         g2d.setColor(Color.YELLOW);
         for (int i = 0; i < outputNames.size(); i++) {
-            // Draw signal name and value markers
-            g2d.drawString(outputNames.get(i), 10, y + SIGNAL_HEIGHT/2);
-            g2d.drawString("1", labelWidth - 20, y + 15);
-            g2d.drawString("0", labelWidth - 20, y + SIGNAL_HEIGHT - 5);
+            String name = outputNames.get(i);
+            GateWindow outputGate = findGateByName(name);
+            if (outputGate != null) {
+                // Draw signal name
+                g2d.drawString(name, 10, y + SIGNAL_HEIGHT/2);
+                
+                // Get current state
+                LogicalValue currentState = LogicalValue.UNDEFINED;
+                List<LogicalValue> history = outputHistory.get(outputGate);
+                if (history != null && !history.isEmpty()) {
+                    currentState = history.get(history.size() - 1);
+                }
+                
+                // Draw state label
+                String stateLabel = getStateLabel(currentState);
+                g2d.drawString(stateLabel, labelWidth - 25, y + SIGNAL_HEIGHT/2);
             
-            // Draw signal
-            if (i < outputHistory.size()) {
-                drawSignal(g2d, outputHistory.get(i), labelWidth, y, timeStepWidth);
+                // Draw signal
+                if (history != null) {
+                    drawSignal(g2d, history, labelWidth, y, timeStepWidth);
+                }
+                
+                y += SIGNAL_SPACING;
             }
-            
-            y += SIGNAL_SPACING;
         }
     }
 
-    private String buildFormula() {
-        List<GateWindow> outputGates = new ArrayList<>();
-        
-        // Collect output gates
-        for (Element element : LGS.world().gates.list) {
-            if (element instanceof GateWindow gw && gw.gate != null 
-                && gw.gate.type == NativeGateType.OUTPUT) {
-                outputGates.add(gw);
-            }
+    private String getStateLabel(LogicalValue state) {
+        switch (state) {
+            case TRUE: return "1";
+            case FALSE: return "0";
+            default: return "?";  // for UNDEFINED
         }
-        
-        if (outputGates.isEmpty()) return "";
-        
-        // Sort outputs by name for consistent display
-        outputGates.sort((a, b) -> a.title.compareTo(b.title));
-        
-        // Build equations for all outputs
-        StringBuilder equations = new StringBuilder();
-        for (int i = 0; i < outputGates.size(); i++) {
-            GateWindow outputGate = outputGates.get(i);
-            String equation = EquationScreen.generateEquation(outputGate);
-            // Format as "X = A + B"
-            equations.append(outputGate.title.substring(0, 1))  // Just use first letter
-                     .append(" = ")
-                     .append(equation);
-            
-            // Add newline between equations
-            if (i < outputGates.size() - 1) {
-                equations.append("\n");
-            }
-        }
-        
-        return equations.toString();
     }
 
-    private void drawSignal(Graphics2D g2d, Boolean[] values, int startX, int y, int timeStepWidth) {
-        // Safety check for null values
-        if (values == null) return;
+    private void drawSignal(Graphics2D g2d, List<LogicalValue> values, int startX, int y, int timeStepWidth) {
+        if (values == null || values.isEmpty()) return;
         
         g2d.setStroke(new BasicStroke(2));
         
         int highY = y + 10;
         int lowY = y + SIGNAL_HEIGHT - 10;
         
-        for (int i = 0; i < values.length; i++) {
-            // Skip if value is null
-            if (values[i] == null) continue;
+        for (int i = 0; i < values.size(); i++) {
+            LogicalValue value = values.get(i);
+            if (value == null) continue;
             
             int x = startX + i * timeStepWidth;
             int nextX = startX + (i + 1) * timeStepWidth;
             
-            if (i > 0 && values[i-1] != null) {
-                int prevY = values[i-1] ? highY : lowY;
-                int currentY = values[i] ? highY : lowY;
+            // Draw vertical line if value changed
+            if (i > 0 && values.get(i-1) != null) {
+                int prevY = values.get(i-1) == LogicalValue.TRUE ? highY : lowY;
+                int currentY = value == LogicalValue.TRUE ? highY : lowY;
+                if (prevY != currentY) {
                 g2d.drawLine(x, prevY, x, currentY);
+                }
             }
             
-            int currentY = values[i] ? highY : lowY;
+            // Draw horizontal line
+            int currentY = value == LogicalValue.TRUE ? highY : lowY;
             g2d.drawLine(x, currentY, nextX, currentY);
+            
+            // Draw undefined state if value is UNDEFINED
+            if (value == LogicalValue.UNDEFINED) {
+                int midY = (highY + lowY) / 2;
+                g2d.setColor(Color.RED);
+                g2d.drawLine(x, midY - 5, nextX, midY + 5);
+                g2d.drawLine(x, midY + 5, nextX, midY - 5);
+                g2d.setColor(SIGNAL_COLOR);
+            }
         }
     }
 
@@ -253,7 +321,8 @@ public class TimingDiagramScreen extends JFrame {
         // Collect gates
         for (Element element : LGS.world().gates.list) {
             if (element instanceof GateWindow gw && gw.gate != null) {
-                if (gw.gate.type == NativeGateType.INPUT) {
+                // Include both INPUT and CLOCK types as inputs
+                if (gw.gate.type == NativeGateType.INPUT || gw.gate.type == NativeGateType.CLOCK) {
                     inputGates.add(gw);
                 } else if (gw.gate.type == NativeGateType.OUTPUT) {
                     outputGates.add(gw);
@@ -262,162 +331,97 @@ public class TimingDiagramScreen extends JFrame {
         }
         
         if (!inputGates.isEmpty() && !outputGates.isEmpty()) {
-            // Update TIME_STEPS based on input count (2^n)
-            TIME_STEPS = 1 << inputGates.size();  // 2^n
-            
-            // Sort gates by name
+            // Sort gates by name for consistent display
             inputGates.sort((a, b) -> a.title.compareTo(b.title));
             outputGates.sort((a, b) -> a.title.compareTo(b.title));
             
-            // Update names and reinitialize histories if input count changed
-            if (inputNames.isEmpty() || inputNames.size() != inputGates.size()) {
-                inputNames = inputGates.stream().map(gw -> gw.title).toList();
-                outputNames = outputGates.stream().map(gw -> gw.title).toList();
-                inputHistory.clear();  // Clear histories to force reinitialization
-                outputHistory.clear();
+            // Update input histories
+            for (GateWindow inputGate : inputGates) {
+                try {
+                    List<LogicalValue> history = inputHistory.computeIfAbsent(inputGate, k -> new ArrayList<>());
+                    
+                    // Get current input value with null check
+                    LogicalValue[] outputs = inputGate.gate.getOutputs();
+                    LogicalValue currentValue = (outputs != null && outputs.length > 0) ? 
+                        outputs[0] : LogicalValue.UNDEFINED;
+                    
+                    if (history.size() >= TIME_STEPS) {
+                        history.remove(history.size() - 1);  // Remove rightmost value
+                    }
+                    history.add(0, currentValue);  // Add new value at the start (left)
+                } catch (Exception e) {
+                    // Skip this gate if there's an error
+                    continue;
+                }
             }
             
-            // Update histories
-            updateHistories(inputGates, outputGates);
+            // Update output histories
+            for (GateWindow outputGate : outputGates) {
+                try {
+                    List<LogicalValue> history = outputHistory.computeIfAbsent(outputGate, k -> new ArrayList<>());
+                    
+                    // Get current output value by checking the input connection
+                    LogicalValue currentValue = LogicalValue.UNDEFINED;
+                    
+                    // Get the input connection to this output gate
+                    if (outputGate.gate.inputs != null && outputGate.gate.inputs.length > 0) {
+                        ButtonConnection input = outputGate.gate.inputs[0];
+                        if (input != null && input.from != null) {
+                            // Get the gate that's connected to this output
+                            GateWindow sourceGate = null;
+                            if (input.from instanceof ButtonConnection) {
+                                ButtonConnection fromButton = (ButtonConnection) input.from;
+                                if (fromButton.parent instanceof GateWindow) {
+                                    sourceGate = (GateWindow) fromButton.parent;
+                                }
+                            }
+                            
+                            if (sourceGate != null && sourceGate.gate != null) {
+                                // Get the output index that's connected to this input
+                                int outputIndex = -1;
+                                for (int i = 0; i < sourceGate.gate.outputs.length; i++) {
+                                    if (sourceGate.gate.outputs[i] == input.from) {
+                                        outputIndex = i;
+                                break;
+                            }
+                        }
+
+                                if (outputIndex >= 0) {
+                                    LogicalValue[] sourceOutputs = sourceGate.gate.getOutputs();
+                                    if (sourceOutputs != null && outputIndex < sourceOutputs.length) {
+                                        currentValue = sourceOutputs[outputIndex];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (history.size() >= TIME_STEPS) {
+                        history.remove(history.size() - 1);  // Remove rightmost value
+                    }
+                    history.add(0, currentValue);  // Add new value at the start (left)
+                } catch (Exception e) {
+                    // Skip this gate if there's an error
+                    continue;
+                }
+            }
+            
+            // Update names if needed
+            inputNames = inputGates.stream().map(gw -> gw.title).toList();
+            outputNames = outputGates.stream().map(gw -> gw.title).toList();
             
             // Repaint
             diagramPanel.repaint();
         }
     }
 
-    private void updateHistories(List<GateWindow> inputGates, List<GateWindow> outputGates) {
-        // Initialize histories if needed
-        if (inputHistory.isEmpty()) {
-            // Initialize input patterns
-            for (int i = 0; i < inputGates.size(); i++) {
-                Boolean[] history = new Boolean[TIME_STEPS];
-                for (int t = 0; t < TIME_STEPS; t++) {
-                    history[t] = ((t >> (inputGates.size() - 1 - i)) & 1) == 1;
-                }
-                inputHistory.add(history);
-            }
-
-            // Initialize output histories
-            outputHistory.clear();
-            for (GateWindow outputGate : outputGates) {
-                Boolean[] history = new Boolean[TIME_STEPS];
-                
-                // Get the gate that feeds into this output
-                List<GateWindow> sourceGates = EquationScreen.getInputConnections(outputGate);
-                if (!sourceGates.isEmpty()) {
-                    GateWindow sourceGate = sourceGates.get(0);
-                    
-                    // For each time step
-                    for (int t = 0; t < TIME_STEPS; t++) {
-                        // Find which input gates are connected to this gate's inputs
-                        Map<Integer, Integer> inputConnections = new HashMap<>();
-                        for (int i = 0; i < sourceGate.gate.getInputCount(); i++) {
-                            ButtonConnection input = sourceGate.gate.inputs[i];
-                            for (int j = 0; j < inputGates.size(); j++) {
-                                if (input != null && input.from != null && 
-                                    input.from == inputGates.get(j).gate.outputs[0]) {
-                                    inputConnections.put(i, j);
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Set up input values for this time step
-                        LogicalValue[] gateInputs = new LogicalValue[sourceGate.gate.getInputCount()];
-                        // Initialize all inputs to FALSE first
-                        for (int i = 0; i < gateInputs.length; i++) {
-                            gateInputs[i] = LogicalValue.FALSE;
-                        }
-                        // Then set the connected inputs
-                        for (Map.Entry<Integer, Integer> conn : inputConnections.entrySet()) {
-                            gateInputs[conn.getKey()] = inputHistory.get(conn.getValue())[t] ? 
-                                LogicalValue.TRUE : LogicalValue.FALSE;
-                        }
-
-                        // Evaluate the gate based on its type
-                        boolean output = false;
-                        
-                        // First check if all required inputs are connected
-                        boolean allInputsConnected = true;
-                        for (int i = 0; i < sourceGate.gate.getInputCount(); i++) {
-                            ButtonConnection input = sourceGate.gate.inputs[i];
-                            if (input == null || input.from == null) {
-                                allInputsConnected = false;
-                                break;
-                            }
-                        }
-
-                        if (!allInputsConnected) {
-                            history[t] = null;  // Use null to represent undefined
-                            continue;
-                        }
-
-                        if (sourceGate.gate instanceof AndGate) {
-                            output = true;
-                            for (LogicalValue input : gateInputs) {
-                                if (input != LogicalValue.TRUE) {
-                                    output = false;
-                                    break;
-                                }
-                            }
-                        } else if (sourceGate.gate instanceof OrGate) {
-                            output = false;
-                            for (LogicalValue input : gateInputs) {
-                                if (input == LogicalValue.TRUE) {
-                                    output = true;
-                                    break;
-                                }
-                            }
-                        } else if (sourceGate.gate instanceof NandGate) {
-                            output = true;
-                            boolean allTrue = true;
-                            for (LogicalValue input : gateInputs) {
-                                if (input != LogicalValue.TRUE) {
-                                    allTrue = false;
-                                    break;
-                                }
-                            }
-                            output = !allTrue;
-                        } else if (sourceGate.gate instanceof NorGate) {
-                            output = true;
-                            for (LogicalValue input : gateInputs) {
-                                if (input == LogicalValue.TRUE) {
-                                    output = false;
-                                    break;
-                                }
-                            }
-                        } else if (sourceGate.gate instanceof XorGate) {
-                            int trueCount = 0;
-                            for (LogicalValue input : gateInputs) {
-                                if (input == LogicalValue.TRUE) {
-                                    trueCount++;
-                                }
-                            }
-                            output = (trueCount % 2) == 1;
-                        } else if (sourceGate.gate instanceof XnorGate) {
-                            int trueCount = 0;
-                            for (LogicalValue input : gateInputs) {
-                                if (input == LogicalValue.TRUE) {
-                                    trueCount++;
-                                }
-                            }
-                            output = (trueCount % 2) == 0;
-                        }
-
-                        history[t] = output;
-                    }
-                }
-                outputHistory.add(history);
+    private GateWindow findGateByName(String name) {
+        for (Element element : LGS.world().gates.list) {
+            if (element instanceof GateWindow gw && gw.title.equals(name)) {
+                return gw;
             }
         }
-    }
-
-    private boolean evaluateEquation(String equation, List<GateWindow> inputGates, LogicalValue[] inputs) {
-        Map<String, Boolean> assignments = new HashMap<>();
-        for (int i = 0; i < inputGates.size(); i++) {
-            assignments.put(inputGates.get(i).title, inputs[i] == LogicalValue.TRUE);
-        }
-        return EquationScreen.evaluateEquation(equation, assignments);
+        return null;
     }
 
     private void cleanup() {

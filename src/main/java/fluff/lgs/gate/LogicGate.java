@@ -12,16 +12,20 @@ public abstract class LogicGate {
 	
 	protected int inputCount;
 	protected LogicalValue[] inputValues;
+	protected String[] inputLabels;
+	protected String[] outputLabels;
 	
 	public LogicGate(IGateType type) {
 		this.type = type;
 		this.inputCount = type.getDefaultInputs();
 		this.inputValues = new LogicalValue[type.getMaxInputs()];
 		this.inputs = new ButtonConnection[type.getMaxInputs()];
+		this.inputLabels = new String[inputCount];
+		this.outputs = new ButtonConnection[type.getOutputs()];
+		this.outputLabels = new String[type.getOutputs()];
 		for (int i = 0; i < type.getMaxInputs(); i++) {
 			this.inputs[i] = new ButtonConnection(ConnectionType.INPUT, i);
 		}
-		this.outputs = new ButtonConnection[type.getOutputs()];
 		for (int i = 0; i < outputs.length; i++) {
 			this.outputs[i] = new ButtonConnection(ConnectionType.OUTPUT, i);
 			GateConnection gc = new GateConnection(this, i);
@@ -64,5 +68,58 @@ public abstract class LogicGate {
 			inputValues[i] = result[i];
 		}
 		return result;
+	}
+	
+	protected void setInputLabel(int index, String label) {
+		if (index >= 0 && index < inputLabels.length) {
+			inputLabels[index] = label;
+		}
+	}
+	
+	protected void setOutputLabel(int index, String label) {
+		if (index >= 0 && index < outputLabels.length) {
+			outputLabels[index] = label;
+		}
+	}
+	
+	public String getInputLabel(int index) {
+		if (index >= 0 && index < inputLabels.length) {
+			return inputLabels[index];
+		}
+		return null;
+	}
+	
+	public String getOutputLabel(int index) {
+		if (index >= 0 && index < outputLabels.length) {
+			return outputLabels[index];
+		}
+		return null;
+	}
+	
+	public LogicGate createCopy() {
+		try {
+			// Create new instance of the same gate type
+			LogicGate copy = getClass().getDeclaredConstructor().newInstance();
+			
+			// Copy basic state
+			copy.inputCount = this.inputCount;
+			copy.inputValues = this.inputValues.clone();
+			copy.inputLabels = this.inputLabels.clone();
+			copy.outputLabels = this.outputLabels.clone();
+			
+			// The constructor already creates the input/output connections
+			// We just need to set up the gate connections for outputs
+			for (int i = 0; i < outputs.length; i++) {
+				if (outputs[i] != null) {
+					GateConnection gc = new GateConnection(copy, i);
+					copy.outputs[i].from = gc;
+				}
+			}
+			
+			return copy;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

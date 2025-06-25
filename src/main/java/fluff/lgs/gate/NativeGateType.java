@@ -12,6 +12,25 @@ import fluff.lgs.gate.impl.natives.NotGate;
 import fluff.lgs.gate.impl.natives.OrGate;
 import fluff.lgs.gate.impl.natives.XnorGate;
 import fluff.lgs.gate.impl.natives.XorGate;
+import fluff.lgs.gate.impl.natives.HalfAdderGate;
+import fluff.lgs.gate.impl.natives.FullAdderGate;
+import fluff.lgs.gate.impl.natives.HalfSubtractorGate;
+import fluff.lgs.gate.impl.natives.FullSubtractorGate;
+import fluff.lgs.gate.impl.natives.Encoder4to2Gate;
+import fluff.lgs.gate.impl.natives.Encoder8to3Gate;
+import fluff.lgs.gate.impl.natives.Decoder2to4Gate;
+import fluff.lgs.gate.impl.natives.Decoder3to8Gate;
+import fluff.lgs.gate.impl.natives.Comparator1BitGate;
+import fluff.lgs.gate.impl.natives.Comparator2BitGate;
+import fluff.lgs.gate.impl.natives.Mux2to1Gate;
+import fluff.lgs.gate.impl.natives.Mux4to1Gate;
+import fluff.lgs.gate.impl.natives.Demux1to2Gate;
+import fluff.lgs.gate.impl.natives.Demux1to4Gate;
+import fluff.lgs.gate.impl.natives.ClockGate;
+import fluff.lgs.gate.impl.natives.DFlipFlopGate;
+import fluff.lgs.gate.impl.natives.JKFlipFlopGate;
+import fluff.lgs.gate.impl.natives.TFlipFlopGate;
+import fluff.lgs.gate.impl.natives.SRFlipFlopGate;
 import fluff.lgs.gui.elements.gate.GateWindow;
 import fluff.lgs.resources.Icons;
 import fluff.lgs.storage.data.IDataInput;
@@ -144,6 +163,253 @@ public enum NativeGateType implements IGateType {
 		@Override
 		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
 			return GateWindow.outputGate(gw);
+		}
+	},
+	HALF_ADDER(
+			"HALF_ADDER",
+			2, 2, 2,
+			2,
+			null,
+			"Half Adder (Sum, Carry)",
+			"2-bit binary addition"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new HalfAdderGate());
+		}
+	},
+	FULL_ADDER(
+			"FULL_ADDER",
+			3, 3, 3,
+			2,
+			null,
+			"Full Adder (Sum, Carry)",
+			"3-bit binary addition"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new FullAdderGate());
+		}
+	},
+	HALF_SUBTRACTOR(
+			"HALF_SUBTRACTOR",
+			2, 2, 2,
+			2,
+			null,
+			"Half Subtractor (Difference, Borrow)",
+			"2-bit binary subtraction"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new HalfSubtractorGate());
+		}
+	},
+	FULL_SUBTRACTOR(
+			"FULL_SUBTRACTOR",
+			3, 3, 3,
+			2,
+			null,
+			"Full Subtractor (Difference, Borrow)",
+			"3-bit binary subtraction"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new FullSubtractorGate());
+		}
+	},
+	ENCODER_4TO2(
+			"ENCODER_4TO2",
+			4, 4, 4,  // 4 inputs fixed
+			2,        // 2 outputs
+			null,     // icon
+			"4-to-2 Encoder",
+			"4-bit priority encoder"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Encoder4to2Gate());
+		}
+	},
+	ENCODER_8TO3(
+			"ENCODER_8TO3",
+			8, 8, 8,  // 8 inputs fixed
+			3,        // 3 outputs
+			null,     // icon
+			"8-to-3 Encoder",
+			"8-bit priority encoder"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Encoder8to3Gate());
+		}
+	},
+	DECODER_2TO4(
+			"DECODER_2TO4",
+			2, 2, 2,  // 2 inputs fixed
+			4,        // 4 outputs
+			null,     // icon
+			"2-to-4 Decoder",
+			"2-bit binary decoder"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Decoder2to4Gate());
+		}
+	},
+	DECODER_3TO8(
+			"DECODER_3TO8",
+			3, 3, 3,  // 3 inputs fixed
+			8,        // 8 outputs
+			null,     // icon
+			"3-to-8 Decoder",
+			"3-bit binary decoder"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Decoder3to8Gate());
+		}
+	},
+	COMPARATOR_1BIT(
+			"COMPARATOR_1BIT",
+			2, 2, 2,  // 2 inputs fixed (A, B)
+			3,        // 3 outputs (A>B, A=B, A<B)
+			null,     // icon
+			"1-bit Comparator",
+			"Compares two 1-bit numbers"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Comparator1BitGate());
+		}
+	},
+	COMPARATOR_2BIT(
+			"COMPARATOR_2BIT",
+			4, 4, 4,  // 4 inputs fixed (A1,A0, B1,B0)
+			3,        // 3 outputs (A>B, A=B, A<B)
+			null,     // icon
+			"2-bit Comparator",
+			"Compares two 2-bit numbers"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Comparator2BitGate());
+		}
+	},
+	MUX_2TO1(
+			"MUX_2TO1",
+			3, 3, 3,  // 3 inputs (2 data, 1 select)
+			1,        // 1 output
+			null,     // icon
+			"2-to-1 Multiplexer",
+			"Selects between 2 inputs"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Mux2to1Gate());
+		}
+	},
+	MUX_4TO1(
+			"MUX_4TO1",
+			6, 6, 6,  // 6 inputs (4 data, 2 select)
+			1,        // 1 output
+			null,     // icon
+			"4-to-1 Multiplexer",
+			"Selects between 4 inputs"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Mux4to1Gate());
+		}
+	},
+	DEMUX_1TO2(
+			"DEMUX_1TO2",
+			2, 2, 2,  // 2 inputs (1 data, 1 select)
+			2,        // 2 outputs
+			null,     // icon
+			"1-to-2 Demultiplexer",
+			"Routes input to 1 of 2 outputs"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Demux1to2Gate());
+		}
+	},
+	DEMUX_1TO4(
+			"DEMUX_1TO4",
+			3, 3, 3,  // 3 inputs (1 data, 2 select)
+			4,        // 4 outputs
+			null,     // icon
+			"1-to-4 Demultiplexer",
+			"Routes input to 1 of 4 outputs"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new Demux1to4Gate());
+		}
+	},
+	CLOCK(
+			"CLOCK",
+			0, 0, 0,  // No inputs needed
+			1,        // One output
+			null,     // icon
+			"Clock Input",
+			"0.5s interval"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new ClockGate());
+		}
+	},
+	D_FLIP_FLOP(
+			"D_FF",
+			2, 2, 2,  // D and Clock inputs
+			2,        // Q and Q' outputs
+			null,     // icon
+			"D Flip-Flop",
+			"Edge-triggered"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new DFlipFlopGate());
+		}
+	},
+	JK_FLIP_FLOP(
+			"JK_FF",
+			3, 3, 3,  // J, K and Clock inputs
+			2,        // Q and Q' outputs
+			null,     // icon
+			"JK Flip-Flop",
+			"Edge-triggered"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new JKFlipFlopGate());
+		}
+	},
+	T_FLIP_FLOP(
+			"T_FF",
+			2, 2, 2,  // T and Clock inputs
+			2,        // Q and Q' outputs
+			null,     // icon
+			"T Flip-Flop",
+			"Edge-triggered"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new TFlipFlopGate());
+		}
+	},
+	SR_FLIP_FLOP(
+			"SR_FF",
+			3, 3, 3,  // S, R and Clock inputs
+			2,        // Q and Q' outputs
+			null,     // icon
+			"SR Flip-Flop",
+			"Edge-triggered"
+			) {
+		@Override
+		public LogicGate create(GateWindow gw, IDataInput data) throws IOException {
+			return GateWindow.nativeGate(gw, new SRFlipFlopGate());
 		}
 	},
 	;

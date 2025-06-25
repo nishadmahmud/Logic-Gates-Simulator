@@ -140,6 +140,56 @@ public class TruthTableScreen extends JFrame {
     }
 
     private void updateTruthTable() {
+        // Check if we're dealing with an encoder
+        boolean isEncoder = false;
+        GateWindow encoderGate = null;
+        
+        for (Element element : LGS.world().gates.list) {
+            if (element instanceof GateWindow gw && gw.gate != null) {
+                if (gw.gate.type == NativeGateType.ENCODER_4TO2 || 
+                    gw.gate.type == NativeGateType.ENCODER_8TO3) {
+                    isEncoder = true;
+                    encoderGate = gw;
+                    break;
+                }
+            }
+        }
+        
+        if (isEncoder && encoderGate != null) {
+            generateEncoderTruthTable(encoderGate);
+        } else {
+            generateRegularTruthTable();
+        }
+    }
+
+    private void generateEncoderTruthTable(GateWindow encoder) {
+        StringBuilder table = new StringBuilder();
+        
+        if (encoder.gate.type == NativeGateType.ENCODER_4TO2) {
+            table.append("D3 D2 D1 D0 | Q1 Q0\n");
+            table.append("------------------------\n");
+            table.append("0  0  0  1  | 0  0\n");
+            table.append("0  0  1  x  | 0  1\n");
+            table.append("0  1  x  x  | 1  0\n");
+            table.append("1  x  x  x  | 1  1\n");
+        } 
+        else if (encoder.gate.type == NativeGateType.ENCODER_8TO3) {
+            table.append("D7 D6 D5 D4 D3 D2 D1 D0 | Q2 Q1 Q0\n");
+            table.append("--------------------------------\n");
+            table.append("0  0  0  0  0  0  0  1  | 0  0  0\n");
+            table.append("0  0  0  0  0  0  1  x  | 0  0  1\n");
+            table.append("0  0  0  0  0  1  x  x  | 0  1  0\n");
+            table.append("0  0  0  0  1  x  x  x  | 0  1  1\n");
+            table.append("0  0  0  1  x  x  x  x  | 1  0  0\n");
+            table.append("0  0  1  x  x  x  x  x  | 1  0  1\n");
+            table.append("0  1  x  x  x  x  x  x  | 1  1  0\n");
+            table.append("1  x  x  x  x  x  x  x  | 1  1  1\n");
+        }
+        
+        truthTableArea.setText(table.toString());
+    }
+
+    private void generateRegularTruthTable() {
         List<GateWindow> inputGates = new ArrayList<>();
         List<GateWindow> outputGates = new ArrayList<>();
         
